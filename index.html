@@ -59,18 +59,17 @@
 // CONFIGURATION: Add your external web links right here!
 // Rules: Keep the "cl" prefix at the start of the name so it sorts properly.
 window.customBlankLinks = {
-    "clfnfshaggyupd": "https://w8.snokido.com/games/html5/friday-night-funkin/shaggy21/index.html"
+    "clfnfhexupd": "https://game.fnfhub.net/24104/"
 };
 
 (function() {
     function openGame(url, name) {
         const safeName = (name || 'Game').replace(/[<>]/g, '');
-        const popup = window.open('', '_blank', 'noopener,noreferrer');
+        // Omit noopener/noreferrer: with them set, window.open() returns null even
+        // though a tab was opened, which previously caused a second tab to open too.
+        const popup = window.open('about:blank', '_blank');
 
-        if (!popup) {
-            window.open(url, '_blank', 'noopener,noreferrer');
-            return;
-        }
+        if (!popup) return;
 
         popup.document.open();
         popup.document.write(`<!DOCTYPE html>
