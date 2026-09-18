@@ -43,11 +43,14 @@
     </h2>
     <h2 style="color: white; text-align: center; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); font-weight: normal; font-size: 18px;">
         <input type="text" placeholder="Search..." id="searchInput" style="padding: 13px; width: 100%; max-width: 420px; border-radius: 8px; border: none; box-shadow: 0 2px 4px rgba(7, 105, 218, 0.1);">
-        <!-- Note: Ensure you replace these with your actual jsDelivr file paths if required -->
-        <button id="lolbutton" onclick="const script = document.createElement('script'); script.src = 'https://jsdelivr.net'; document.head.appendChild(script);">Click to load if it isnt loading</button>
+        <script src="https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/searchbut.js"></script>
+        <button id="lolbutton" onclick="(function(){ const script = document.createElement('script'); script.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/games.js'; script.onload = function(){ if (window.injectCustomEntries) window.injectCustomEntries(); }; document.body.appendChild(script); })();">Click to load if it isnt loading</button>
     </h2>
     <div id="sections-container"></div>
 </div>
+
+<!-- Loads the full remote UGS game list and builds the letter sections/sidebar -->
+<script src="https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/games.js"></script>
 
 <!-- ========================================== -->
 <!-- CUSTOM LINKS & EMBED CONFIGURATION -->
@@ -56,51 +59,80 @@
 // CONFIGURATION: Add your external web links right here!
 // Rules: Keep the "cl" prefix at the start of the name so it sorts properly.
 window.customBlankLinks = {
-    "clfnfshaggyupd": "https://w8.snokido.com/games/html5/friday-night-funkin/shaggy21/index.html" // FIXED: Added missing closing quote
+    "clfnfshaggyupd": "https://w8.snokido.com/games/html5/friday-night-funkin/shaggy21/index.html"
 };
 
-// Inject custom entry names into the primary layout engine arrays
-Object.defineProperty(window, 'files', {
-    get: function() { return this._files_data; },
-    set: function(remoteArray) {
-        const customNames = Object.keys(window.customBlankLinks || {});
-        this._files_data = remoteArray.concat(customNames);
-    },
-    configurable: true
-});
+(function() {
+    function openGame(url, name) {
+        const safeName = (name || 'Game').replace(/[<>]/g, '');
+        const popup = window.open('', '_blank', 'noopener,noreferrer');
 
-// Intercept button generation to inject standard iframe/about:blank deployment patterns
-const originalCreateElement = document.createElement;
-document.createElement = function(tagName) {
-    const element = originalCreateElement.apply(this, arguments);
-    if (tagName.toLowerCase() === 'input') {
-        // Wait briefly for the main script to attach values and onclick events
-        setTimeout(() => {
-            if (element.type === 'button' && window.customBlankLinks && window.customBlankLinks[element.value]) {
-                const targetUrl = window.customBlankLinks[element.value];
-                
-                // Override standard GitHub fetching behavior with an iframe injector
-                element.onclick = function() {
-                    const newWin = window.open("about:blank", "_blank");
-                    if (newWin) {
-                        newWin.document.open();
-                        // Injecting an unbordered, fullscreen iframe to load your external site seamlessly
-                        newWin.document.write(`
-                            <html style="margin:0;padding:0;overflow:hidden;">
-                            <head><title>${element.value.substring(2)}</title></head>
-                            <body style="margin:0;padding:0;overflow:hidden;">
-                                <iframe src="${targetUrl}" style="border:none;width:100vw;height:100vh;margin:0;padding:0;" allowfullscreen></iframe>
-                            </body>
-                            </html>
-                        `);
-                        newWin.document.close();
-                    }
-                };
-            }
-        }, 0);
+        if (!popup) {
+            window.open(url, '_blank', 'noopener,noreferrer');
+            return;
+        }
+
+        popup.document.open();
+        popup.document.write(`<!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>${safeName}</title>
+                <style>
+                    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+                    iframe { width: 100vw; height: 100vh; border: 0; display: block; background: #000; }
+                </style>
+            </head>
+            <body>
+                <iframe src="${url}" allowfullscreen="true" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </body>
+            </html>`);
+        popup.document.close();
     }
-    return element;
-};
+
+    function addCustomEntry(name, url) {
+        const afterCl = name.toLowerCase().startsWith('cl') ? name.slice(2) : name;
+        let letter = (afterCl.charAt(0) || '#').toUpperCase();
+        if (!/^[A-Z0-9]$/.test(letter)) letter = '#';
+
+        const section = document.getElementById(`section-${letter}`);
+        if (!section) return; // games.js hasn't built sections yet (e.g. still loading)
+
+        const buttonsContainer = section.querySelector('.buttons-container');
+        if (!buttonsContainer) return;
+
+        // Avoid adding the same custom entry twice (e.g. after a manual reload).
+        if (buttonsContainer.querySelector(`input[value="${CSS.escape(name)}"]`)) return;
+
+        section.classList.remove('empty');
+        const emptyMsg = buttonsContainer.querySelector('.empty-message');
+        if (emptyMsg) emptyMsg.remove();
+
+        const btn = document.createElement('input');
+        btn.type = 'button';
+        btn.value = name;
+        btn.style.width = '100%';
+        btn.style.height = '100%';
+        btn.onclick = function() { openGame(url, name); };
+        buttonsContainer.appendChild(btn);
+
+        const sidebarBtn = [...document.querySelectorAll('.sidebar-btn')].find((b) => b.textContent === letter);
+        if (sidebarBtn && sidebarBtn.classList.contains('empty')) {
+            sidebarBtn.classList.remove('empty');
+            sidebarBtn.onclick = function() {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            };
+        }
+    }
+
+    window.injectCustomEntries = function injectCustomEntries() {
+        Object.entries(window.customBlankLinks || {}).forEach(([name, url]) => addCustomEntry(name, url));
+    };
+
+    // games.js (loaded above, synchronously) has already built the sections by the time
+    // this script runs, so we can inject right away.
+    window.injectCustomEntries();
+})();
 </script>
 
 </body>
