@@ -3067,16 +3067,14 @@ function generateAllSections() {
       displayName = entry.name || entry.displayName || fileName;
     }
 
-    // Sort using the internal fileName
-    if (typeof fileName === "string" && fileName.trim().length > 0) {
-      const lower = fileName.toLowerCase();
-      if (lower.startsWith("cl")) {
-        const aftercl = lower.substring(2);
-        if (aftercl.length > 0) {
-          const firstChar = aftercl[0].toUpperCase();
-          if (filesByChar[firstChar]) {
-            filesByChar[firstChar].push({ displayName, fileName });
-          }
+    // Sort by the visible name while keeping fileName for loading.
+    if (typeof displayName === "string" && displayName.trim().length > 0) {
+      const lower = displayName.toLowerCase();
+      const sortName = lower.startsWith("cl") ? lower.substring(2) : lower;
+      if (sortName.length > 0) {
+        const firstChar = sortName[0].toUpperCase();
+        if (filesByChar[firstChar]) {
+          filesByChar[firstChar].push({ displayName, fileName });
         }
       }
     }
