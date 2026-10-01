@@ -2110,8 +2110,8 @@ let files = [
 "clshadowcourier",
 "clshadowdancer",
 "clshadowdancersecret",
-"clshaggy (1)",
-"clshaggy",
+["clshaggy (1)", "clfnfshaggyxmattv2"],
+["clshaggy", "clfnfshaggyv2"],
 "clshantaegb",
 "clshapetransform",
 "clshc1",
@@ -3028,62 +3028,55 @@ let files = [
 "clswitch",
 "clwariowaretouched"
 ];
+
 function generateAllSections() {
   try {
     document.getElementById("lolbutton").remove();
   } catch (e) {}
+  
   const allChars = [
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-    "F",
-    "G",
-    "H",
-    "I",
-    "J",
-    "K",
-    "L",
-    "M",
-    "N",
-    "O",
-    "P",
-    "Q",
-    "R",
-    "S",
-    "T",
-    "U",
-    "V",
-    "W",
-    "X",
-    "Y",
-    "Z",
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
+    "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+    "U", "V", "W", "X", "Y", "Z",
   ];
 
-   const filesByChar = {};
+  const filesByChar = {};
   allChars.forEach((char) => {
     filesByChar[char] = [];
   });
 
-  files.forEach((file) => {
-    const lower = file.toLowerCase();
-    if (lower.startsWith("cl")) {
-      const aftercl = lower.substring(2);
-      if (aftercl.length > 0) {
-        const firstChar = aftercl[0].toUpperCase();
-        if (filesByChar[firstChar]) {
-          filesByChar[firstChar].push(file);
+  // UPDATED PARSING LOGIC
+  files.forEach((entry) => {
+    let displayName = "";
+    let fileName = "";
+
+    // 1. Support plain strings
+    if (typeof entry === "string") {
+      fileName = entry;
+      displayName = entry;
+    }
+    // 2. Support Arrays: [FileName, DisplayName]
+    else if (Array.isArray(entry)) {
+      fileName = entry[0];
+      displayName = (entry[1] !== null && entry[1] !== undefined) ? entry[1] : entry[0];
+    }
+    // 3. Support Objects: { file: "FileName", name: "DisplayName" }
+    else if (typeof entry === "object" && entry !== null) {
+      fileName = entry.file || entry.name || "";
+      displayName = entry.name || entry.displayName || fileName;
+    }
+
+    // Sort using the internal fileName
+    if (typeof fileName === "string" && fileName.trim().length > 0) {
+      const lower = fileName.toLowerCase();
+      if (lower.startsWith("cl")) {
+        const aftercl = lower.substring(2);
+        if (aftercl.length > 0) {
+          const firstChar = aftercl[0].toUpperCase();
+          if (filesByChar[firstChar]) {
+            filesByChar[firstChar].push({ displayName, fileName });
+          }
         }
       }
     }
@@ -3104,21 +3097,23 @@ function generateAllSections() {
     buttonsContainer.className = "buttons-container";
 
     if (filesByChar[char].length > 0) {
-      filesByChar[char].forEach((file) => {
+      filesByChar[char].forEach((fileObj) => {
         const btn = document.createElement("input");
         btn.type = "button";
-        btn.value = file;
+        
+        btn.value = fileObj.displayName; 
+        
         btn.onclick = () => {
           function normalizeFileName(name) {
             if (name.includes(".") && name.lastIndexOf(".") > 0) return name;
             return name + ".html";
           }
 
-          const normalized = normalizeFileName(file);
+          const normalized = normalizeFileName(fileObj.fileName);
           const encoded = encodeURIComponent(normalized);
 
           fetch(
-            `https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile/UGS-Files/${encoded}?t=${Date.now()}`,
+            `https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile/UGS-Files/${encoded}?t=${Date.now()}`
           )
             .then((response) => response.text())
             .then((text) => {
@@ -3174,7 +3169,12 @@ function generateSidebar(allChars, filesByChar) {
     sidebar.appendChild(btn);
   });
 }
+
 generateAllSections();
+</script>
+
+
+
 
 </script>
 
