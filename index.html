@@ -3182,82 +3182,107 @@ generateAllSections();
 <!-- CUSTOM LINKS & EMBED CONFIGURATION -->
 <!-- ========================================== -->
 <script>
-// CONFIGURATION: Add your external web links right here!
-// Rules: Keep the "cl" prefix at the start of the name so it sorts properly.
+// CONFIGURATION
 window.customBlankLinks = {
-    "clfnfmidfightdeluxe": "https://mod.fnfhub.net/games/6816?token=c28f0c6ecd0c3cc97d2a212fb9f58dd7"
+    "clfnfmidfightdeluxe": "https://mod.fnfhub.net/games/6816?token=c28f0c6ecd0c3cc97d2a212fb9f58dd7",
+    "clfnfstarecrown": "https://mod.fnfhub.net/games/25715?token=c28f0c6ecd0c3cc97d2a212fb9f58dd7",
+    "clfnfunlabeledanime":"https://mod.fnfhub.net/games/24863?token=c28f0c6ecd0c3cc97d2a212fb9f58dd7",
+    "clfnfmariomadnessv2":"https://mod.fnfhub.net/games/27062?token=c28f0c6ecd0c3cc97d2a212fb9f58dd7",
+    "clfnfzardyv2":"https://mod.fnfhub.net/games/24958?token=c28f0c6ecd0c3cc97d2a212fb9f58dd7",
+    "clfnfentity": "https://mod.fnfhub.net/games/24917?token=c28f0c6ecd0c3cc97d2a212fb9f58dd7",
+    "clfnfherobrineclassic":"https://mod.fnfhub.net/games/24250?token=c28f0c6ecd0c3cc97d2a212fb9f58dd7",
+    "clfnflullabyv2":"https://mod.fnfhub.net/games/24807?token=c28f0c6ecd0c3cc97d2a212fb9f58dd7",
+    "clfnfskyredux":"https://fnf.kdata1.com/2025/sky-redux/1/",
 };
 
 (function() {
-    function openGame(url, name) {
-        const safeName = (name || 'Game').replace(/[<>]/g, '');
-        // Omit noopener/noreferrer: with them set, window.open() returns null even
-        // though a tab was opened, which previously caused a second tab to open too.
+    async function openGame(url, name) {
         const popup = window.open('about:blank', '_blank');
+        if (!popup) {
+            alert('Popup blocked!');
+            return;
+        }
 
-        if (!popup) return;
+        try {
+            const proxyEndpoint = "https://lilcell.mrrainbow.workers.dev?url=";
+            const response = await fetch(proxyEndpoint + encodeURIComponent(url));
+            if (!response.ok) throw new Error('Proxy failed');
+            
+            let htmlText = await response.text();
+            const urlObj = new URL(url);
+            const baseTag = `<base href="${urlObj.origin}${urlObj.pathname}">`;
+            htmlText = htmlText.replace('<head>', `<head>${baseTag}`);
 
-        popup.document.open();
-        popup.document.write(`<!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>${safeName}</title>
-                <style>
-                    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
-                    iframe { width: 100vw; height: 100vh; border: 0; display: block; background: #000; }
-                </style>
-            </head>
-            <body>
-                <iframe src="${url}" allowfullscreen="true" referrerpolicy="no-referrer-when-downgrade"></iframe>
-            </body>
-            </html>`);
-        popup.document.close();
-    }
-
-    function addCustomEntry(name, url) {
-        const afterCl = name.toLowerCase().startsWith('cl') ? name.slice(2) : name;
-        let letter = (afterCl.charAt(0) || '#').toUpperCase();
-        if (!/^[A-Z0-9]$/.test(letter)) letter = '#';
-
-        const section = document.getElementById(`section-${letter}`);
-        if (!section) return; // games.js hasn't built sections yet (e.g. still loading)
-
-        const buttonsContainer = section.querySelector('.buttons-container');
-        if (!buttonsContainer) return;
-
-        // Avoid adding the same custom entry twice (e.g. after a manual reload).
-        if (buttonsContainer.querySelector(`input[value="${CSS.escape(name)}"]`)) return;
-
-        section.classList.remove('empty');
-        const emptyMsg = buttonsContainer.querySelector('.empty-message');
-        if (emptyMsg) emptyMsg.remove();
-
-        const btn = document.createElement('input');
-        btn.type = 'button';
-        btn.value = name;
-        btn.style.width = '100%';
-        btn.style.height = '100%';
-        btn.onclick = function() { openGame(url, name); };
-        buttonsContainer.appendChild(btn);
-
-        const sidebarBtn = [...document.querySelectorAll('.sidebar-btn')].find((b) => b.textContent === letter);
-        if (sidebarBtn && sidebarBtn.classList.contains('empty')) {
-            sidebarBtn.classList.remove('empty');
-            sidebarBtn.onclick = function() {
-                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            };
+            popup.document.open();
+            popup.document.write(htmlText);
+            popup.document.close();
+        } catch (error) {
+            console.error('Injection Error:', error);
+            popup.document.open();
+            popup.document.write(`<body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:20px;"><h2>⚠️ Error loading ${name}</h2><p>Proxy blocked request.</p><a href="${url}" target="_blank" style="color:cyan;">Open Directly</a></body>`);
+            popup.document.close();
         }
     }
 
-    window.injectCustomEntries = function injectCustomEntries() {
-        Object.entries(window.customBlankLinks || {}).forEach(([name, url]) => addCustomEntry(name, url));
+    function addCustomEntry(name, url) {
+        // 1. Determine the sorting letter
+        const cleanName = name.toLowerCase().startsWith('cl') ? name.slice(2) : name;
+        const letter = (cleanName.charAt(0) || '#').toUpperCase();
+        
+        // 2. Find the section. If it doesn't exist, we can't inject.
+        const section = document.getElementById(`section-${letter}`);
+        if (!section) {
+            console.warn(`Section for letter ${letter} not found for ${name}`);
+            return false;
+        }
+
+        // 3. Find the container for buttons
+        const container = section.querySelector('.buttons-container');
+        if (!container) {
+            console.warn(`Container not found in section ${letter}`);
+            return false;
+        }
+
+        // Avoid duplicates
+        if (container.querySelector(`input[value="${CSS.escape(name)}"]`)) return true;
+
+        // 4. Clean up "Empty" states
+        section.classList.remove('empty');
+        const emptyMsg = container.querySelector('.empty-message');
+        if (emptyMsg) emptyMsg.remove();
+
+        // 5. Create the button
+        const btn = document.createElement('input');
+        btn.type = 'button';
+        btn.value = name;
+        btn.style.cssText = 'width:100%; height:100%';
+        btn.onclick = () => openGame(url, name);
+        container.appendChild(btn);
+
+        // 6. Update Sidebar link
+        const sidebarBtn = [...document.querySelectorAll('.sidebar-btn')].find(b => b.textContent === letter);
+        if (sidebarBtn) {
+            sidebarBtn.classList.remove('empty');
+            sidebarBtn.onclick = () => section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        return true;
+    }
+
+    window.injectCustomEntries = function() {
+        let success = true;
+        Object.entries(window.customBlankLinks || {}).forEach(([name, url]) => {
+            if (!addCustomEntry(name, url)) success = false;
+        });
+        return success;
     };
 
-    // games.js (loaded above, synchronously) has already built the sections by the time
-    // this script runs, so we can inject right away.
-    window.injectCustomEntries();
+    const retryInterval = setInterval(() => {
+        if (window.injectCustomEntries()) clearInterval(retryInterval);
+    }, 100);
 })();
+
+
+
 </script>
 
 </body>
