@@ -3068,9 +3068,12 @@ function generateAllSections() {
     }
 
     // Sort by the visible name while keeping fileName for loading.
-    if (typeof displayName === "string" && displayName.trim().length > 0) {
-      const lower = displayName.toLowerCase();
-      const sortName = lower.startsWith("cl") ? lower.substring(2) : lower;
+    if (typeof fileName === "string" && fileName.trim().length > 0) {
+      const sectionName = typeof displayName === "string" && displayName.trim().length > 0
+        ? displayName
+        : fileName;
+      const lower = sectionName.toLowerCase();
+      const sortName = lower.substring(0, 2) === "cl" ? lower.substring(2) : lower;
       if (sortName.length > 0) {
         const firstChar = sortName[0].toUpperCase();
         if (filesByChar[firstChar]) {
